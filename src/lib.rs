@@ -36,7 +36,7 @@
 //! build = "build.rs"
 //!
 //! [build-dependencies]
-//! embed-resource = "1.4"
+//! embed-resource = "1.6"
 //! ```
 //!
 //! In `build.rs`:
@@ -48,6 +48,16 @@
 //!     embed_resource::compile("checksums.rc");
 //! }
 //! ```
+//!
+//! # Cross-compilation
+//!
+//! It is possible to embed resources in Windows executables built on non-Windows hosts. There are two ways to do this:
+//!
+//! When targetting `*-pc-windows-gnu`, `*-w64-mingw32-windres` is attempted by default, for `*-pc-windows-msvc` it's `llvm-rc`,
+//! this can be overriden by setting `RC_$TARGET`, `RC_${TARGET//-/_}`, or `RC` environment variables.
+//!
+//! When compiling with LLVM-RC, an external C compiler is used to preprocess the resource,
+//! preloaded with configuration from [`cc`](https://github.com/alexcrichton/cc-rs#external-configuration-via-environment-variables).
 //!
 //! # Credit
 //!
@@ -67,13 +77,18 @@
 //!
 //! [@MSxDOS](https://github.com/MSxDOS) -- finding and supplying RC.EXE its esoteric header include paths
 //!
+//! [@roblabla](https://github.com/roblabla) -- cross-compilation to Windows MSVC via LLVM-RC
+//!
 //! # Special thanks
 //!
 //! To all who support further development on [Patreon](https://patreon.com/nabijaczleweli), in particular:
 //!
 //!   * ThePhD
+//!   * Embark Studios
 
 
+#[cfg(any(not(target_os = "windows"), all(target_os = "windows", target_env = "msvc")))]
+extern crate cc;
 #[cfg(all(target_os = "windows", target_env = "msvc"))]
 extern crate vswhom;
 #[cfg(all(target_os = "windows", target_env = "msvc"))]
@@ -104,6 +119,8 @@ use std::path::{Path, PathBuf};
 /// but on MSVC Windows, this will try its hardest to find `RC.EXE` in Windows Kits and/or SDK directories,
 /// falling back to [Jon Blow's VS discovery script](https://pastebin.com/3YvWQa5c),
 /// and on Windows 10 `%INCLUDE%` will be updated to help `RC.EXE` find `windows.h` and friends.
+///
+/// `$OUT_DIR` is added to the include search path.
 ///
 /// # Examples
 ///
